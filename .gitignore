@@ -1,0 +1,6 @@
+build/
+*.obj
+*.exe
+*.pdb
+settings.ini
+third_party/musashi/

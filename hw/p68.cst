@@ -1,0 +1,43 @@
+// Copyright 2026 Franz Schoning
+// Project: https://github.com/Schoning-Labs/pipe68k
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+// hw/p68.cst: physical constraints (pin locations and I/O standards) for the stand-alone CPU core builds made by
+// tools/build.sh (top module p68_top). The file is deliberately tiny, and a beginner may wonder why a chip design
+// needs so few pins: p68_top is only a timing test harness around the core, with one clock input, one serial input
+// and one serial output. Its purpose is to give Gowin's place-and-route a complete design to place and time, so that
+// the clock figure (Fmax) of the core can be measured. It is never loaded onto the board, so the pins were picked
+// for convenience and are not wired to anything useful. The real board constraints belong to the full system
+// (the A1200 around the core), which has its own file in its own repository.
+//
+// A .cst file is read by Gowin place-and-route. IO_LOC puts a port on a physical ball of the FPGA package (here the
+// GW5AST-138C in the FPG676 package), and IO_PORT sets the electrical standard of that pin. Without IO_LOC the tool
+// would choose pins itself, which is legal but makes the result differ from run to run. tools/build.sh copies this
+// file into the build folder (as p.cst) and may append more lines to the copy, for example CLOCK_LOC lines that put
+// a clock enable on a global clock line (see tools/build.sh).
+
+// The clock input. The board has a 50 MHz oscillator on pin P16, but this timing-only file uses M21, a pin that was
+// found to work for a clock entering the chip in these builds. LVCMOS33 is plain 3.3 V logic. PULL_MODE=NONE and DRIVE=OFF because this pin only ever receives a signal.
+IO_LOC "clk" M21;
+IO_PORT "clk" IO_TYPE=LVCMOS33 PULL_MODE=NONE DRIVE=OFF BANK_VCCIO=3.3;
+
+// Serial input to the harness. PULL_MODE=UP holds the pin at logic 1 when nothing is connected, which is also the
+// idle level of a serial line, so an unconnected input behaves like an idle line.
+IO_LOC "din" K16;
+IO_PORT "din" IO_TYPE=LVCMOS33 PULL_MODE=UP BANK_VCCIO=3.3;
+
+// Serial output from the harness. DRIVE=8 is the output current in milliamps, a moderate value that is enough for a
+// lightly loaded 3.3 V pin.
+IO_LOC "dout" P15;
+IO_PORT "dout" DRIVE=8 IO_TYPE=LVCMOS33 BANK_VCCIO=3.3;

@@ -1,0 +1,26 @@
+pipe68k
+Copyright 2026 Franz Schoning
+
+This product is licensed under the Apache License, Version 2.0 (see LICENSE).
+
+Third-party parts. None of them is included in this repository. The scripts in tools/ download them when they are needed.
+
+Musashi, a 68000 to 68040 emulator in C, by Karl Stenerud (github.com/kstenerud/Musashi). MIT license: Copyright 1998-2002
+Karl Stenerud. tools/get_musashi.sh downloads it into third_party/musashi. The lockstep bench (tools/lockstep.sh) builds a
+patched copy of it in build/musashi_gen (tools/musashi_patch.py); that copy is not distributed. The license text is in
+Musashi's own readme.txt and in the header of m68kcpu.c.
+
+SoftFloat, release 2b, by John R. Hauser, in the MAME packaging that is part of the Musashi tree
+(third_party/musashi/softfloat). It is compiled into the lockstep bench. Its license (derivative works are allowed, also for
+commercial purposes, if the source states that the work is derivative and keeps the four license paragraphs) is in the header
+of each SoftFloat source file and in softfloat/README.txt.
+
+Test data, downloaded and never shipped:
+- SingleStepTests 680x0 (github.com/SingleStepTests/680x0), the 68000 set, fetched by tools/fetch_tests.sh.
+- WinUAE (github.com/tonioni/WinUAE), the CPU tester of Toni Wilen and the WinUAE team, licensed under the GNU GPL. Cloned
+  and built by tools/cputest_build.sh to generate the 68020 and 68882 test data. No WinUAE source is part of this repository.
+  The 68881/68882 reference in sim/lockstep/fpu_ref.c was written from Motorola's manual; where the manual is silent it
+  matches behavior measured with WinUAE's test data, and no WinUAE code or table was copied.
+
+Vendor tools, not included and under their own licenses: Gowin EDA V1.9.12.04 (Gowin Semiconductor), Verilator and Icarus
+Verilog (the OSS CAD Suite), Microsoft Visual Studio 2019 Build Tools, MSYS2 Perl.

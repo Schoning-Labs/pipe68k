@@ -1,0 +1,45 @@
+{
+ "cell": {
+  "ALU:CIN>COUT": 0.045,
+  "ALU:CIN>SUM": 0.248,
+  "ALU:I>COUT": 0.496,
+  "ALU:I>SUM": 0.573,
+  "LUT": 0.391,
+  "MUXW:I": 0.115,
+  "MUXW:S0": 0.231
+ },
+ "designs": [
+  "_f1p3.tr",
+  "_n0p3.tr",
+  "_n1p3.tr"
+ ],
+ "net": {
+  "terms": [
+   "fanout 1",
+   "fanout>1",
+   "log2 fanout",
+   "log2 module (fanout>1)",
+   "log2 load modules",
+   "log2 design (fanout>1)"
+  ],
+  "w": [
+   0.5472,
+   -0.0897,
+   0.1668,
+   0.0479,
+   0.164,
+   0.8127
+  ]
+ },
+ "tco": 0.342,
+ "tsu": {
+  "ADA": -0.071,
+  "ADB": -0.065,
+  "CE": 0.28,
+  "CEA": 0.075,
+  "D": 0.083,
+  "RESET": 0.335,
+  "SET": 0.335,
+  "other": 0.128
+ }
+}

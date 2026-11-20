@@ -1,0 +1,38 @@
+# Copyright 2026 Franz Schoning
+# Project: https://github.com/Schoning-Labs/pipe68k
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+#
+# Skip list of the WinUAE cputester runner (sim/lockstep/cputest.cpp). A test that is skipped is counted and reported with its
+# reason, so a skip is never silent. The runner reads this file line by line; a line that starts with # is a comment.
+#
+# Line types:
+#   file NAME reason          skip every test of the instruction folder NAME (ADD.L, CAS.B and so on)
+#   op MASK VALUE reason      skip every test whose first opcode word satisfies (opcode AND MASK) = VALUE
+#   rule NAME off             switch one of the built-in rules below off (names: trace, misaligned, undef_flags, fpu_trapped)
+#
+# Built-in rules, all on unless a rule line says otherwise (they live in cputest.cpp, next to the comparison):
+#   trace          tests that expect a trace exception, or that run with the trace bits of SR set, are skipped because the core
+#                  has no trace mode.
+#   misaligned     tests with a word or long operand at an odd address, and flow instructions with a misaligned stack, are skipped.
+#                  This rule existed while the core wanted aligned data; the core handles misaligned data now, so it is off below.
+#   frame format  exception frames in a format other than 0 and 2 (the two formats the core produces) are not compared.
+#   undef_flags    a DIV, CHK or CHK2 test whose only difference is in the flags counts as "undef" and not as a failure. The manual
+#                  leaves those flags undefined on a 68020, and WinUAE has no values measured on real silicon for them.
+#   fpu_trapped    FPU forms that the core sends to the line F exception on purpose (packed decimal, immediate .D/.X/.P operands,
+#                  FMOVEM.L #imm with two or three registers, FMOVEM.X with a dynamic register list) are skipped.
+# Current state: the only entry is the line that switches the misaligned rule off, so everything the generator produces for the
+# 68020 integer instructions is run, apart from the tests the other built-in rules sort out. Entries for CAS, CAS2, MOVE to absolute
+# and indexed destinations, ADDI to CMPI with a long immediate to absolute long, and for the misaligned rules were removed in one step
+# when the core learned those cases.
+rule misaligned off

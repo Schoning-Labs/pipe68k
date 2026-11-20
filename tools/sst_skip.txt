@@ -1,0 +1,49 @@
+# Copyright 2026 Franz Schoning
+# Project: https://github.com/Schoning-Labs/pipe68k
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+#
+# Skip list of the SingleStepTests runner (sim/lockstep/sst.cpp). The tests are written for the 68000, and the core is a 68020, so
+# a few behaviors differ on purpose. A skipped test is counted and reported with its reason, so a skip is never silent. The
+# runner reads this file line by line; a line that starts with # is a comment.
+#
+# Line types:
+#   file NAME reason          skip every test of the data file NAME.json.gz
+#   op MASK VALUE reason      skip every test whose first opcode word satisfies (opcode AND MASK) = VALUE
+#
+# Built-in rules (always on, written in skip_reason() of sst.cpp):
+#   trace bit set: the core has no trace mode.
+#   address or bus error tests (vector 2 or 3 in the initial memory): the 68000 pushes a 14 byte frame, and the 68020 does not
+#     fault on odd addresses at all.
+#   MOVE from SR in user mode: the instruction is privileged on the 68020 and not on the 68000.
+#   MOVEM to -(An) with the base register in the register list: the 68000 stores the old value, the 68020 the decremented one.
+#   an indexed effective address whose extension word has bits 10-8 set: the 68000 ignores the scale and the full format bits, the
+#     68020 uses them.
+#   Bcc, BRA and BSR with the displacement byte FF: the 68020 reads a 32-bit displacement behind the opcode.
+#   tests that touch memory at addresses 0 to 5 or the bench's prologue area, which the bench needs for itself.
+# Exception tests (the vector bytes are in the initial memory) compare D0-D7, A0-A6, USP, SR and PC only, because the 68000 frame
+# has 6 bytes and the 68020 frame has 8 or 12.
+# Further rules sort a mismatch into "undefined" or "disagree" and keep it out of the failure count: ABCD, SBCD and NBCD with
+# undefined N and V or with operands that are not valid BCD, DIVU and DIVS with overflow or divide by zero (the 68000 clears C,
+# the 68020 leaves it), ASR with a register count above the operand size on a negative operand, and writes to SR bits that exist
+# only on the 68020 (M and T0).
+# Every built-in rule can be switched off with a line "rule NAME off" (names: trace, bcc_ff, move_from_sr, index_bits, sr_m_t0,
+# bcd_nv, asr_big, div_c). None is switched off now.
+#
+# The entries of this file:
+#   RTE: the data pushes the 68000 frame (status register and PC, 6 bytes, no format word). The 68020 RTE reads a format word at
+#   offset 6 and the frame size depends on it, so a 68000 frame leads to a format error exception and the test cannot be compared.
+file RTE      68000 exception frame
+# LINK A7,#d: the 68000 pushes the stack pointer after it was decremented, the 68020 pushes the old value. The WinUAE data for the
+# 68020 passes on the core, so the 68000 data is skipped for this one opcode (the mask 0xFFFF matches exactly 0x4E57).
+op 0xFFFF 0x4E57 LINK A7 (68000 data)

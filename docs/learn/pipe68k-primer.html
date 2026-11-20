@@ -1,0 +1,307 @@
+<title>pipe68k Primer</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Sans+Condensed:wght@600;700&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: one reading column; code blocks may run wider inside their own scroll box. */
+:root {
+  --bg: #f6f7f9; --panel: #ffffff; --fg: #1d2330; --muted: #5a6476; --line: #d9dee7;
+  --accent: #1f5fae; --accent-soft: #e4edf8; --code-bg: #f0f2f6; --c-com: #3f7d4e; --c-kw: #8a3fa0; --c-num: #a35a12;
+  --f-body: "IBM Plex Sans", system-ui, sans-serif;
+  --f-head: "IBM Plex Sans Condensed", "IBM Plex Sans", system-ui, sans-serif;
+  --f-mono: "IBM Plex Mono", ui-monospace, Consolas, monospace;
+}
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
+  --bg: #12151b; --panel: #191d25; --fg: #e3e7ee; --muted: #9aa4b5; --line: #2b313d;
+  --accent: #79a9ea; --accent-soft: #1c2a3d; --code-bg: #161a21; --c-com: #7fbf8c; --c-kw: #d39ae3; --c-num: #e2a868; color-scheme: dark } }
+:root[data-theme="dark"] {
+  --bg: #12151b; --panel: #191d25; --fg: #e3e7ee; --muted: #9aa4b5; --line: #2b313d;
+  --accent: #79a9ea; --accent-soft: #1c2a3d; --code-bg: #161a21; --c-com: #7fbf8c; --c-kw: #d39ae3; --c-num: #e2a868; color-scheme: dark }
+body { background: var(--bg); color: var(--fg); font: 16px/1.6 var(--f-body); }
+.wrap { max-width: 46rem; margin: 0 auto; padding-block: 2rem 4rem;
+  padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); }
+h1, h2, h3 { font-family: var(--f-head); line-height: 1.2; text-wrap: balance; }
+h1 { font-size: 2.1rem; margin: 0 0 .4rem; }
+h2 { font-size: 1.45rem; margin: 2.6rem 0 .6rem; padding-top: .8rem; border-top: 1px solid var(--line); }
+h3 { font-size: 1.12rem; margin: 1.6rem 0 .4rem; }
+p, li { max-width: 65ch; }
+.lead { color: var(--muted); margin-top: 0; }
+code { font-family: var(--f-mono); font-size: .9em; background: var(--code-bg); padding: 0 .25em; border-radius: 3px; }
+.code { background: var(--code-bg); border: 1px solid var(--line); border-radius: 6px; overflow-x: auto; margin: .8rem 0 1.2rem; }
+.code .src { display: block; padding: .5rem .8rem; font-size: .82rem; color: var(--muted); border-bottom: 1px solid var(--line); font-family: var(--f-mono); }
+.code pre { margin: 0; padding: .8rem; font: .82rem/1.55 var(--f-mono); white-space: pre; }
+.k { color: var(--c-kw); } .c { color: var(--c-com); } .n { color: var(--c-num); }
+table { border-collapse: collapse; width: 100%; font-size: .93rem; }
+.tbl { overflow-x: auto; margin: .8rem 0; }
+th, td { text-align: left; padding: .4rem .6rem; border-bottom: 1px solid var(--line); vertical-align: top; }
+th { font-family: var(--f-head); font-weight: 600; }
+td.num { font-variant-numeric: tabular-nums; text-align: right; white-space: nowrap; }
+.pipe { display: flex; flex-wrap: wrap; gap: .4rem; margin: 1rem 0; }
+.st { flex: 1 1 5.2rem; min-width: 0; background: var(--panel); border: 1px solid var(--line); border-radius: 6px; padding: .5rem .6rem; }
+.st b { display: block; font-family: var(--f-mono); color: var(--accent); }
+.st span { font-size: .82rem; color: var(--muted); line-height: 1.35; display: block; }
+.regs { display: grid; grid-template-columns: repeat(auto-fit, minmax(13rem, 1fr)); gap: .6rem; margin: 1rem 0; }
+.reg { background: var(--panel); border: 1px solid var(--line); border-radius: 6px; padding: .6rem .8rem; }
+.reg b { font-family: var(--f-mono); color: var(--accent); }
+.flags { font-family: var(--f-mono); }
+.note { background: var(--accent-soft); border-radius: 6px; padding: .7rem .9rem; margin: 1rem 0; }
+.note p { margin: .2rem 0; }
+dl { display: grid; grid-template-columns: max-content 1fr; gap: .3rem 1rem; }
+dt { font-family: var(--f-mono); font-weight: 500; }
+dd { margin: 0; }
+@media (max-width: 30rem) { dl { grid-template-columns: 1fr; } dd { margin-bottom: .5rem; } }
+</style>
+
+<div class="wrap">
+<h1>pipe68k Primer</h1>
+<p class="lead">A first read before the full walk through the project. What a 68k CPU is, how pipe68k is built, and three pieces of the real Verilog explained line by line.</p>
+
+<h2>1. Verilog in five ideas</h2>
+<p>Verilog looks like a programming language, but it describes hardware. Nothing runs line after line. Every line becomes a circuit, and all circuits work at the same time.</p>
+<ol>
+<li><b>Modules.</b> A <code>module</code> is a chip part with input and output pins. Modules are placed inside other modules, like boards with chips on them.</li>
+<li><b>Wires are logic.</b> <code>wire x = a &amp; b;</code> is an AND gate. Its output changes as soon as <code>a</code> or <code>b</code> changes. Long chains of such logic take time to settle, measured in nanoseconds.</li>
+<li><b>Registers are memory.</b> Inside <code>always @(posedge clk)</code>, every <code>&lt;=</code> is a flip-flop. It stores a value and only changes on the rising edge of the clock. All flip-flops in the chip change at the same moment.</li>
+<li><b>The clock sets the speed.</b> At 66.67 MHz the clock ticks every 15 ns. The logic between two flip-flops must settle within those 15 ns. "Timing closure" means every such path fits.</li>
+<li><b>Bit vectors.</b> <code>[31:0]</code> is 32 bits, bit 31 on the left. <code>x[7:0]</code> is the low byte. <code>{a, b}</code> joins bits. <code>{32{s}}</code> repeats bit <code>s</code> 32 times.</li>
+</ol>
+<p>In an FPGA, the logic becomes small lookup tables (LUTs, 4 inputs each on this chip) wired together. The Tang board's chip has about 138,000. That is why the logic size of each unit matters so much.</p>
+
+<h2>2. The 68k as a programmer sees it</h2>
+<div class="regs">
+<div class="reg"><b>D0–D7</b><br>Eight 32-bit data registers. Arithmetic works on bytes (.B), words (.W, 16 bits) or longs (.L, 32 bits).</div>
+<div class="reg"><b>A0–A7</b><br>Eight 32-bit address registers. A7 is the stack pointer. Memory is reached through them.</div>
+<div class="reg"><b>PC</b><br>Program counter: the address of the next instruction.</div>
+<div class="reg"><b>CCR</b><br>Condition flags <span class="flags">X N Z V C</span>, set by most instructions and tested by branches.</div>
+</div>
+<div class="tbl"><table>
+<tr><th>Flag</th><th>Meaning</th><th>Example after <code>SUB.B</code></th></tr>
+<tr><td class="flags">N</td><td>Negative: top bit of the result</td><td>5 − 7 = −2, N = 1</td></tr>
+<tr><td class="flags">Z</td><td>Zero: result is 0</td><td>7 − 7 = 0, Z = 1</td></tr>
+<tr><td class="flags">V</td><td>Overflow: signed result does not fit</td><td>−128 − 1, V = 1</td></tr>
+<tr><td class="flags">C</td><td>Carry or borrow out of the top bit</td><td>5 − 7 unsigned, C = 1</td></tr>
+<tr><td class="flags">X</td><td>Extend: copy of C for multi-word arithmetic</td><td>same as C</td></tr>
+</table></div>
+<p>Instructions are 2 to 22 bytes long. The first 16-bit word says what to do. Extension words follow with constants and addresses. This variable length is what makes a fast 68k hard: the CPU does not know where the next instruction starts until it has decoded the current one.</p>
+<p>The 68020 adds 32-bit everything, more addressing modes, bit-field instructions and a coprocessor interface for the 68881/68882 FPU. pipe68k implements the 68020 instruction set plus the 68882.</p>
+
+<h2>3. How pipe68k is built</h2>
+<h3>A pipeline</h3>
+<p>A simple CPU does one instruction from start to end, then the next. pipe68k works like an assembly line. Each stage does one part of the work in one clock, then passes the instruction on. Eight instructions are in progress at once.</p>
+<div class="pipe">
+<div class="st"><b>IF</b><span>Fetch: read code from the 8 KB instruction cache into a queue</span></div>
+<div class="st"><b>DS</b><span>Decode: turn instructions into micro-operations (uops)</span></div>
+<div class="st"><b>DR</b><span>Decide which two instructions can run together</span></div>
+<div class="st"><b>AG</b><span>Address: compute memory addresses</span></div>
+<div class="st"><b>OC1</b><span>Read the 8 KB data cache</span></div>
+<div class="st"><b>OC2</b><span>Align data, read registers</span></div>
+<div class="st"><b>EX</b><span>Execute: add, shift, compare, branch</span></div>
+<div class="st"><b>WB</b><span>Write back: registers, memory, flags</span></div>
+</div>
+<p><b>Uops.</b> A complex 68k instruction such as <code>MOVEM</code> (save many registers) is broken into simple steps, one uop each. Most instructions are a single uop. A uop is a 268-bit bundle of control bits that tells every later stage what to do.</p>
+<p><b>Speculation and replay.</b> The pipeline guesses ahead: which way a branch goes, that the data is in the cache. When a guess is wrong, the instructions behind it are thrown away and restarted. Results only become final in WB, in program order, so software never sees the guess.</p>
+
+<h3>Dual issue: two instructions per clock</h3>
+<p>This is the main goal of the project. It follows the design of Motorola's 68060.</p>
+<ul>
+<li><b>Lane A</b> can execute every instruction.</li>
+<li><b>Lane B</b> executes only simple, one-uop instructions between registers: <code>MOVE</code>, <code>ADD</code>, <code>SUB</code>, <code>AND</code>, <code>OR</code>, <code>CMP</code>, <code>MOVEQ</code>, <code>ADDQ</code>, <code>TST</code>, <code>CLR</code>, predicted branches and a few more.</li>
+<li>Two instructions pair only when the second does not need a result the first one is still computing. DR checks this every clock. Section 4.3 shows that check.</li>
+</ul>
+
+<h3>The FPU</h3>
+<p>The floating-point unit runs at half the CPU clock. Each floating-point operation takes many clocks anyway, so the slower clock costs little and gives its long logic paths twice the time. It was recently made smaller by doing its work in more, simpler steps.</p>
+
+<h3>Where the logic goes</h3>
+<p>Measured on the full Amiga 1200 system before the current round of cuts (LUTs of the about 92,500 used).</p>
+<div class="tbl"><table>
+<tr><th>Unit</th><th>What it does</th><th class="num">LUTs</th></tr>
+<tr><td>Execute (incl. FPU)</td><td>Arithmetic, shifts, multiply, divide, bit fields, floating point</td><td class="num">17,500</td></tr>
+<tr><td>Decode</td><td>About 20 small decoders, one per instruction group</td><td class="num">10,400</td></tr>
+<tr><td>Fetch</td><td>Instruction cache, queue, branch prediction</td><td class="num">10,300</td></tr>
+<tr><td>Address, operands, registers</td><td>AG, OC, register file</td><td class="num">13,200</td></tr>
+<tr><td>Rest of the Amiga system</td><td>Chipset, RTG graphics card, DDR3 memory, network, HDMI</td><td class="num">40,500</td></tr>
+</table></div>
+
+<h2>4. Three pieces of the real code</h2>
+<p>These are short extracts from the source. Comments starting with <code>//</code> are added for this primer. Lines not needed to understand the idea are left out and marked.</p>
+
+<h3>4.1 The data registers: storing and reading D0–D7</h3>
+<p>The register file holds the CPU's registers in flip-flops. This extract shows the eight data registers: how WB writes them, and how a later stage reads them.</p>
+<div class="code"><span class="src">rtl/core/p68_regfile.v (extract)</span><pre data-src="regfile"></pre></div>
+<div class="note"><p><b>Why two write ports?</b> With dual issue, lane A and lane B can each finish an instruction in the same clock. Both results must be stored in that one clock.</p>
+<p><b>Why the bypass?</b> Without it, an instruction that needs the result of the one just ahead would wait one clock. With it, the value goes straight from WB to the reader.</p></div>
+
+<h3>4.2 The adder and the flags</h3>
+<p>One adder in EX does ADD, SUB, CMP, NEG, ADDX and SUBX. Subtraction is done by adding the inverted number plus one (two's complement). The flags come out of the same adder.</p>
+<div class="code"><span class="src">rtl/core/p68_ex.v (extract)</span><pre data-src="adder"></pre></div>
+<p>A branch such as <code>BGT</code> then needs one decision: is the condition true for the current flags? There are only 16 conditions and 16 flag combinations, so the code turns each condition into a small truth table.</p>
+<div class="code"><span class="src">rtl/core/p68_ex.v (extract)</span><pre data-src="cond"></pre></div>
+<div class="note"><p><b>The timing trick.</b> Computing the condition from scratch takes several logic levels. Making the 16-entry table one clock early leaves only a single 16-way select in the critical clock. "Compute early into a register, select late" is used all over this core to meet 15 ns.</p></div>
+
+<h3>4.3 The pairing check: may two instructions run together?</h3>
+<p>Every clock, DR looks at the next two instructions and decides whether lane B can take the second one. This is the heart of dual issue.</p>
+<div class="code"><span class="src">rtl/core/p68_ag.v (extract, simplified)</span><pre data-src="pair"></pre></div>
+<div class="note"><p><b>What a failed pairing costs.</b> Nothing beyond the lost second slot. The first instruction runs alone in lane A, and the second becomes the first of the next pair.</p></div>
+
+<h2>5. Words used in this project</h2>
+<dl>
+<dt>LUT</dt><dd>Lookup table: the FPGA's basic logic block, any function of 4 inputs.</dd>
+<dt>Flip-flop (FF)</dt><dd>One stored bit that changes on the clock edge.</dd>
+<dt>Block RAM</dt><dd>Fixed memory blocks in the chip. Free logic when a table can live there.</dd>
+<dt>Logic levels</dt><dd>LUTs in a row between two flip-flops. At most about 8 fit in 15 ns here.</dd>
+<dt>Fanout</dt><dd>How many inputs one signal drives. High fanout means long, slow wires.</dd>
+<dt>Place and route</dt><dd>Gowin's tool deciding where each LUT sits on the chip and how wires run.</dd>
+<dt>CPI</dt><dd>Clocks per instruction, averaged over a test program.</dd>
+<dt>Lockstep test</dt><dd>The simulated CPU runs next to a reference 68k model; every result is compared.</dd>
+<dt>Replay</dt><dd>Throwing away and restarting instructions after a wrong guess.</dd>
+</dl>
+</div>
+
+<script type="text/plain" id="regfile">
+reg [255:0] rd_;      // D0-D7 as one row of 256 flip-flops: register n is bits n*32 .. n*32+31.
+                      // 'reg' plus the clocked block below makes these real flip-flops.
+
+integer i;            // a loop counter for the tool only; it is not hardware
+
+always @(posedge clk) begin          // everything inside happens at the rising clock edge
+  for (i = 0; i < 8; i = i + 1)      // not a loop at run time: the tool builds 8 copies, one per register
+    if (wb_wen && wb_wreg == i)      // lane A's WB wants to write (wb_wen) and names register i
+      rd_[i*32 +: 32] <= wb_val;     // store lane A's result. 'i*32 +: 32' = 32 bits starting at bit i*32.
+                                     // '<=' means: take the new value at the clock edge, all at once.
+    else if (wb2_wen && wb2_wreg == i)   // otherwise lane B's WB (the second instruction of a pair)
+      rd_[i*32 +: 32] <= wb2_val;
+                                     // neither: the register keeps its value (a flip-flop holds by itself)
+end
+
+// Reading a register. OC2 asks for register number r and gets its value in the same clock.
+// The bypass: if WB is writing that register in this very clock, return the new value,
+// because the flip-flops only take it at the end of the clock.
+function [31:0] rdb;
+  input [4:0] r;                     // register number 0-22 (D0-D7, A0-A7, temporaries, stack banks)
+  input [735:0] f;                   // all registers in one row
+  input we; input [4:0] wr; input [31:0] wv;   // lane A's write: enable, register, value
+  begin
+    rdb = (we && wr == r)                 ? wv      :   // lane A writes it now: take that
+          (wb2_wen && {1'b0, wb2_wreg} == r) ? wb2_val :   // lane B writes it now: take that
+          f[r*32 +: 32];                                   // else the stored value
+  end                                // '? :' chains become a chain of selects (multiplexers)
+endfunction
+
+assign oc_va = rdb(oc_ra, rf, wb_wen, wb_wreg, wb_val);   // operand A of the uop in OC2
+assign oc_vb = rdb(oc_rb, rf, wb_wen, wb_wreg, wb_val);   // operand B
+// 'assign' is a permanent connection: oc_va always shows the result of this logic.
+</script>
+
+<script type="text/plain" id="adder">
+// a = source operand, b = destination operand (68k: SUB src,dst computes dst - src).
+wire sub  = (op == `OP_SUB) || (op == `OP_CMP) || (op == `OP_SUBX);  // operations that invert a
+wire negb = (op == `OP_NEG) || (op == `OP_NEGX);                     // operations that invert b (0 - b)
+wire bor  = sub || negb;           // a borrow-type operation: the 68k's C is the inverse of the adder's carry
+
+// carry-in: +1 completes the two's complement (b + ~a + 1 = b - a);
+// ADDX/SUBX/NEGX take it from the X flag (ccr[4]) to chain multi-word arithmetic
+wire cin  = (op == `OP_ADDX) ? ccr[4] :
+            (op == `OP_SUBX || op == `OP_NEGX) ? !ccr[4] : (sub || op == `OP_NEG);
+
+// bq and ax are b and a, already inverted where needed (done one clock earlier, in a register)
+wire [33:0] s2  = {1'b0, bq, 1'b1} + {1'b0, ax, cin};
+// The trick: an extra bit below bit 0 on each side, 1 and cin. 1 + cin carries into bit 0 exactly
+// when cin = 1, so one 34-bit adder gives a 32-bit add with carry-in. The top bit is the carry out.
+wire [32:0] sum = s2[33:1];        // drop the helper bit: 32-bit result plus carry in bit 32
+
+// carries out of the byte and the word: needed for .B and .W operations
+wire c8 = sum[8] ^ bq[8] ^ ax[8], c16 = sum[16] ^ bq[16] ^ ax[16], c32 = sum[32];
+
+// ---- flags (lines for shifts and other units left out) ----
+wire n_s = (sz == `SZ_B) ? sum[7] : (sz == `SZ_W) ? sum[15] : sum[31];   // N: top bit at the operand size
+wire cy  = (sz == `SZ_B) ? c8 : (sz == `SZ_W) ? c16 : c32;              // carry at the operand size
+wire bm  = (sz == `SZ_B) ? bq[7] : (sz == `SZ_W) ? bq[15] : bq[31];     // sign of input b
+wire axm = (sz == `SZ_B) ? ax[7] : (sz == `SZ_W) ? ax[15] : ax[31];     // sign of input a (as added)
+
+// V: overflow happens only when both inputs have the same sign and the result's sign differs
+wire v_add = (bm == axm) && (n_s != bm);
+// C: the carry, inverted for subtraction (a borrow is "no carry")
+wire c_f   = cy ^ bor;
+// Z (not shown in full): the real code finds "all result bits zero" from the inputs, without waiting
+// for the carry to ripple through all 32 bits, because Z is on a critical path.
+</script>
+
+<script type="text/plain" id="cond">
+// condf: is condition c true for flags f? f = {N, Z, V, C}, so f[3]=N, f[2]=Z, f[1]=V, f[0]=C.
+function condf; input [3:0] c; input [3:0] f;
+  begin
+    case (c)                                   // c is the 4-bit condition field from the instruction
+      4'h0: condf = 1'b1;                      // T   always (BRA)
+      4'h1: condf = 1'b0;                      // F   never
+      4'h2: condf = !f[0] && !f[2];            // HI  unsigned higher:  C = 0 and Z = 0
+      4'h3: condf = f[0] || f[2];              // LS  lower or same
+      4'h4: condf = !f[0];                     // CC  carry clear
+      4'h5: condf = f[0];                      // CS  carry set
+      4'h6: condf = !f[2];                     // NE  not equal (Z = 0)
+      4'h7: condf = f[2];                      // EQ  equal
+      4'h8: condf = !f[1];                     // VC  no overflow
+      4'h9: condf = f[1];                      // VS  overflow
+      4'hA: condf = !f[3];                     // PL  plus
+      4'hB: condf = f[3];                      // MI  minus
+      4'hC: condf = f[3] == f[1];              // GE  signed greater or equal: N = V
+      4'hD: condf = f[3] != f[1];              // LT  signed less
+      4'hE: condf = !f[2] && (f[3] == f[1]);   // GT  signed greater
+      default: condf = f[2] || (f[3] != f[1]); // LE  signed less or equal
+    endcase
+  end
+endfunction
+
+// ctab: the whole truth table of one condition: entry q says whether c is true when the flags are q.
+function [15:0] ctab; input [3:0] c;
+  integer q;
+  begin for (q = 0; q < 16; q = q + 1) ctab[q] = condf(c, q[3:0]); end
+endfunction
+
+reg [15:0] tt_a;                   // filled with ctab(c) one clock early, when the uop enters EX (not shown)
+always @* cond = tt_a[ccr_e[3:0]]; // in EX: the current N Z V C pick one bit of the table. One 16-way select.
+// 'always @*' describes logic, not flip-flops: it recomputes whenever its inputs change.
+</script>
+
+<script type="text/plain" id="pair">
+// cf: does uop x write register r? It can write r in three ways:
+function cf; input [4:0] r; input [`UW-1:0] x;
+  cf = (x[`F_WEN] && x[`F_WREG] == r) ||                       // its result goes to r
+       (x[`F_LA_UEN] && x[`F_LA_BREG] == r) ||                 // it steps r for a load, as in (A0)+
+       ((x[`F_SA_UEN] || x[`F_LEA]) && x[`F_SA_BREG] == r);    // it steps r for a store, or LEA writes r
+endfunction
+// x[`F_WEN] picks named fields out of the 268-bit uop. The names are defined in p68_uop.vh.
+
+// i1ok(x1): the first instruction is one uop that cannot branch, trap or need a special unit.
+// i2ok(x2): the second is lane B's kind: ADD/SUB/AND/OR/EOR/CMP/MOVE/NEG between registers or with
+//           a constant, no memory access, D0-D7/A0-A7 only. (Both are long lists of such tests.)
+
+// The basic pairing decision for instructions x1 (older) and x2 (younger):
+pok = ok                                                    // both instructions are there and valid
+   && i1ok(x1) && i2ok(x2)                                  // each is allowed in its lane
+   && !(x2[`F_ASEL] == `AS_REG && cf(x2[`F_AREG], x1) && !rna)  // x2's source is not written by x1 ...
+   && !(cf(x2[`F_BREG], x1) && !rnb)                        // ... nor its destination operand ...
+   && !(x2[`F_WEN] && cf(x2[`F_WREG], x1));                 // ... and both do not write the same register
+// rna / rnb: the one exception, as on the 68060. If x1 is MOVE.L Rm,Rx and x2 reads Rx,
+// x2 simply reads Rm instead: same value, no waiting.
+
+// Example:  ADD.L D1,D2 ; SUB.L D3,D4   -> pair (no shared registers)
+//           ADD.L D1,D2 ; SUB.L D2,D4   -> no pair (SUB needs the new D2)
+//           MOVE.L D1,D2 ; ADD.L D2,D5  -> pair (ADD reads D1 instead of D2)
+</script>
+
+<script>
+(function () {
+  var KW = /\b(module|endmodule|input|output|wire|reg|integer|assign|always|begin|end|if|else|for|case|endcase|default|function|endfunction|posedge)\b/g;
+  function esc(s) { return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;'); }
+  function line(l) {
+    var i = l.indexOf('//'), code = i < 0 ? l : l.slice(0, i), com = i < 0 ? '' : l.slice(i);
+    code = esc(code).replace(KW, '<span class="k">$1</span>').replace(/\b(\d+'[bhd][0-9a-fA-F_]+)\b/g, '<span class="n">$1</span>');
+    return code + (com ? '<span class="c">' + esc(com) + '</span>' : '');
+  }
+  document.querySelectorAll('pre[data-src]').forEach(function (p) {
+    var s = document.getElementById(p.getAttribute('data-src'));
+    if (!s) return;
+    var t = s.textContent.replace(/^\n/, '').replace(/\s+$/, '');
+    p.innerHTML = t.split('\n').map(line).join('\n');
+  });
+})();
+</script>
